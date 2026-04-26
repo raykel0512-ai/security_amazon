@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 # 페이지 설정
 st.set_page_config(page_title="AMZN 주가 분석 대시보드", layout="wide")
 
-# 타이틀 및 설명
+# 타이틀
 st.title("🚀 아마존(AMZN) 적정 주가 시뮬레이터")
 st.markdown("""
 이 대시보드는 아마존의 사업 부문별 가치(SOTP)를 산출하고 경쟁사와 비교하기 위해 제작되었습니다. 
@@ -47,6 +46,7 @@ target_price = equity_value / shares
 # --- 메인 화면: 결과 표시 ---
 col1, col2, col3 = st.columns(3)
 with col1:
+    # :.2f로 수정 (실수형 표시)
     st.metric("산출 적정 주가", f"${target_price:.2f}")
 with col2:
     st.metric("기업 가치 (EV)", f"${total_ev/1000:,.1f}B")
@@ -59,8 +59,10 @@ st.divider()
 st.subheader("💡 아마존 사업 부문별 가치 기여도")
 labels = ['AWS', 'Advertising', 'Retail & Others']
 values = [val_aws, val_ads, val_retail]
+
+# color_discrete_sequence 로 오타 수정 완료
 fig_pie = px.pie(names=labels, values=values, hole=0.4, 
-                 color_discretesequence=px.colors.sequential.RdBu)
+                 color_discrete_sequence=px.colors.sequential.RdBu)
 st.plotly_chart(fig_pie, use_container_width=True)
 
 # --- 시각화 2: 경쟁사 비교 (Bar Chart) ---
@@ -86,17 +88,13 @@ st.divider()
 st.subheader("📝 분석 메모 및 산출 근거")
 st.markdown(f"""
 ### 1. 가치 산정 방식 (SOTP)
-- **AWS 가치 (${val_aws/1000:,.1f}B):** 클라우드 시장의 지배력과 AI 인프라 수요를 반영하여 EV/Sales {aws_mult}배 적용.
-- **광고 가치 (${val_ads/1000:,.1f}B):** 고마진 검색 광고 비즈니스로 메타/구글 수준의 {ads_mult}배 적용.
-- **리테일 가치 (${val_retail/1000:,.1f}B):** 물류 효율화와 프라임 멤버십 가치를 포함하여 월마트 대비 프리미엄을 준 {retail_mult}배 적용.
+- **AWS 가치 (${val_aws/1000:,.1f}B):** 클라우드 시장 지배력을 반영하여 EV/Sales {aws_mult}배 적용.
+- **광고 가치 (${val_ads/1000:,.1f}B):** 고마진 검색 광고 비즈니스로 {ads_mult}배 적용.
+- **리테일 가치 (${val_retail/1000:,.1f}B):** 물류 효율화 가치를 포함하여 {retail_mult}배 적용.
 
 ### 2. 정성적 전망
 - **Upside:** AWS의 생성형 AI 매출 본격화, 광고 사업 부문의 영업이익 기여도 확대.
-- **Downside:** 반독점 규제 이슈로 인한 사업부 분할 압박, 소비자 지출 둔화.
-
-### 3. 경쟁사 대비 차별점
-- **vs Microsoft:** MSFT는 AI 소프트웨어에 강점이 있으나, 아마존은 AI 인프라(AWS)와 거대 커머스 데이터를 동시에 보유함.
-- **vs Walmart:** 월마트는 오프라인 강점이 크나, 아마존의 클라우드/광고 같은 고마진 포트폴리오가 부재함.
+- **Downside:** 반독점 규제 이슈, 소비자 지출 둔화.
 """)
 
-st.caption("주의: 본 데이터는 학습 및 토론 용도로 작성되었으며, 투자 권유를 목적으로 하지 않습니다.")
+st.caption("주의: 본 데이터는 학습용이며 투자 권유를 목적으로 하지 않습니다.")
