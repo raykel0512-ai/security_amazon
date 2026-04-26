@@ -1,41 +1,102 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
-st.set_page_config(layout="wide")
-st.title("AMZN Valuation Dashboard & Simulator")
+# 페이지 설정
+st.set_page_config(page_title="AMZN 주가 분석 대시보드", layout="wide")
 
-# 1. 사이드바 - 사용자 입력 (수치 수정 가능)
-st.sidebar.header("Valuation Inputs (2025E)")
-aws_rev = st.sidebar.number_input("AWS Revenue ($M)", value=110000)
-aws_mult = st.sidebar.slider("AWS EV/S Multiple", 5.0, 15.0, 10.0)
+# 타이틀 및 설명
+st.title("🚀 아마존(AMZN) 적정 주가 시뮬레이터")
+st.markdown("""
+이 대시보드는 아마존의 사업 부문별 가치(SOTP)를 산출하고 경쟁사와 비교하기 위해 제작되었습니다. 
+왼쪽 사이드바에서 수치를 조정하여 적정 주가 변화를 확인해보세요.
+""")
 
-ads_rev = st.sidebar.number_input("Ads Revenue ($M)", value=60000)
-ads_mult = st.sidebar.slider("Ads EV/S Multiple", 3.0, 10.0, 7.0)
+# --- 사이드바: 입력 변수 ---
+st.sidebar.header("📊 2025E 실적 전망 수정")
 
-retail_rev = st.sidebar.number_input("Retail Revenue ($M)", value=480000)
-retail_mult = st.sidebar.slider("Retail EV/S Multiple", 0.5, 2.0, 1.2)
+# AWS 부문
+st.sidebar.subheader("1. AWS (Cloud)")
+aws_rev = st.sidebar.number_input("AWS 예상 매출 ($M)", value=110000, step=1000)
+aws_mult = st.sidebar.slider("AWS 적용 배수 (EV/Sales)", 5.0, 15.0, 10.0)
 
-# 2. 계산 로직
-aws_val = aws_rev * aws_mult
-ads_val = ads_rev * ads_mult
-retail_val = retail_rev * retail_mult
-total_ev = aws_val + ads_val + retail_val
-share_price = total_ev / 10500 # 주식수 10.5B 가정
+# 광고 부문
+st.sidebar.subheader("2. Advertising")
+ads_rev = st.sidebar.number_input("광고 예상 매출 ($M)", value=60000, step=1000)
+ads_mult = st.sidebar.slider("광고 적용 배수 (EV/Sales)", 3.0, 12.0, 7.0)
 
-# 3. 메인 화면 - 시각화
+# 리테일 부문
+st.sidebar.subheader("3. Retail & Others")
+retail_rev = st.sidebar.number_input("리테일 예상 매출 ($M)", value=480000, step=1000)
+retail_mult = st.sidebar.slider("리테일 적용 배수 (EV/Sales)", 0.5, 2.5, 1.2)
+
+# 기타 재무 정보
+st.sidebar.subheader("4. 재무 세부사항")
+net_debt = st.sidebar.number_input("순부채 ($M)", value=40000)
+shares = st.sidebar.number_input("발행 주식 수 (M)", value=10500)
+
+# --- 계산 로직 ---
+val_aws = aws_rev * aws_mult
+val_ads = ads_rev * ads_mult
+val_retail = retail_rev * retail_mult
+total_ev = val_aws + val_ads + val_retail
+equity_value = total_ev - net_debt
+target_price = equity_value / shares
+
+# --- 메인 화면: 결과 표시 ---
 col1, col2, col3 = st.columns(3)
-col1.metric("적정 시가총액", f"${total_ev/1000:,.1f}B")
-col2.metric("산출 적정 주가", f"${share_price:,.2d}")
-col3.metric("현재가 대비 상승여력", "+15%") # 예시
+with col1:
+    st.metric("산출 적정 주가", f"${target_price:.2f}")
+with col2:
+    st.metric("기업 가치 (EV)", f"${total_ev/1000:,.1f}B")
+with col3:
+    st.metric("자기자본 가치", f"${equity_value/1000:,.1f}B")
 
-st.markdown("---")
-st.subheader("경쟁사 비교 분석 (정성/정량)")
-df = pd.DataFrame({
-    'Metric': ['OPM', 'Revenue Growth', 'FCF Margin'],
-    'AMZN': [10.8, 11.5, 9.2],
-    'MSFT': [43.5, 14.2, 28.0],
-    'WMT': [4.2, 4.8, 2.5]
+st.divider()
+
+# --- 시각화 1: 사업부별 가치 비중 (Donut Chart) ---
+st.subheader("💡 아마존 사업 부문별 가치 기여도")
+labels = ['AWS', 'Advertising', 'Retail & Others']
+values = [val_aws, val_ads, val_retail]
+fig_pie = px.pie(names=labels, values=values, hole=0.4, 
+                 color_discretesequence=px.colors.sequential.RdBu)
+st.plotly_chart(fig_pie, use_container_width=True)
+
+# --- 시각화 2: 경쟁사 비교 (Bar Chart) ---
+st.subheader("🏁 경쟁사 주요 지표 비교")
+comp_data = pd.DataFrame({
+    'Company': ['Amazon', 'Microsoft', 'Walmart'],
+    'OPM (%)': [10.8, 43.5, 4.2],
+    'Rev Growth (%)': [11.5, 14.2, 4.8],
+    'Forward P/E': [32.0, 31.0, 28.0]
 })
-st.bar_chart(df.set_index('Metric'))
 
-st.info("메모: 아마존의 주가는 AWS의 AI 매출 가속화 여부에 따라 배수가 재평가될 수 있습니다.")
+tab1, tab2 = st.tabs(["수익성 & 성장성", "밸류에이션(P/E)"])
+with tab1:
+    fig_comp = px.bar(comp_data, x='Company', y=['OPM (%)', 'Rev Growth (%)'], 
+                      barmode='group', title="영업이익률 및 매출성장률 비교")
+    st.plotly_chart(fig_comp, use_container_width=True)
+with tab2:
+    fig_pe = px.bar(comp_data, x='Company', y='Forward P/E', color='Company', title="선행 P/E 배수 비교")
+    st.plotly_chart(fig_pe, use_container_width=True)
+
+# --- 정성적 분석 메모 & 산출 근거 ---
+st.divider()
+st.subheader("📝 분석 메모 및 산출 근거")
+st.markdown(f"""
+### 1. 가치 산정 방식 (SOTP)
+- **AWS 가치 (${val_aws/1000:,.1f}B):** 클라우드 시장의 지배력과 AI 인프라 수요를 반영하여 EV/Sales {aws_mult}배 적용.
+- **광고 가치 (${val_ads/1000:,.1f}B):** 고마진 검색 광고 비즈니스로 메타/구글 수준의 {ads_mult}배 적용.
+- **리테일 가치 (${val_retail/1000:,.1f}B):** 물류 효율화와 프라임 멤버십 가치를 포함하여 월마트 대비 프리미엄을 준 {retail_mult}배 적용.
+
+### 2. 정성적 전망
+- **Upside:** AWS의 생성형 AI 매출 본격화, 광고 사업 부문의 영업이익 기여도 확대.
+- **Downside:** 반독점 규제 이슈로 인한 사업부 분할 압박, 소비자 지출 둔화.
+
+### 3. 경쟁사 대비 차별점
+- **vs Microsoft:** MSFT는 AI 소프트웨어에 강점이 있으나, 아마존은 AI 인프라(AWS)와 거대 커머스 데이터를 동시에 보유함.
+- **vs Walmart:** 월마트는 오프라인 강점이 크나, 아마존의 클라우드/광고 같은 고마진 포트폴리오가 부재함.
+""")
+
+st.caption("주의: 본 데이터는 학습 및 토론 용도로 작성되었으며, 투자 권유를 목적으로 하지 않습니다.")
